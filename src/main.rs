@@ -1,6 +1,7 @@
+use std::env;
+
 use dotenvy::dotenv;
 use poise::serenity_prelude::{self as serenity, ReactionType};
-use std::env;
 
 struct Data {}
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -20,6 +21,12 @@ fn to_keycap_unicode(number: usize) -> String {
         2 => "2️⃣",
         3 => "3️⃣",
         4 => "4️⃣",
+        5 => "5️⃣",
+        6 => "6️⃣",
+        7 => "7️⃣",
+        8 => "8️⃣",
+        9 => "9️⃣",
+        10 => "🔟",
         _ => "❓",
     }
     .to_string()
@@ -55,13 +62,19 @@ async fn poll(
     .iter()
     .flatten()
     .enumerate()
-    .map(|text| ("", format!("{} - {}", text.0 + 1, text.1), false))
+    .map(|text| {
+        (
+            "",
+            format!("{} — {}", to_keycap_unicode(text.0 + 1), text.1),
+            false,
+        )
+    })
     .collect();
 
     let author_name = &ctx.author().name;
     let author_icon = ctx.author().avatar_url();
 
-    let send = ctx
+    let reply_handle = ctx
         .send(|builder| {
             builder.embed(|embed| {
                 embed
@@ -78,16 +91,17 @@ async fn poll(
         })
         .await?;
 
-    let message = send.into_message().await?;
-    /*
-    let emoji = ReactionType::Unicode("2".to_string());
-    message.react(ctx, emoji).await?;
-    */
+    let message = reply_handle.into_message().await?;
 
-    for (index, _data) in answers.iter().enumerate() {
+    for (index, _) in answers.iter().enumerate() {
         let emoji = ReactionType::Unicode(to_keycap_unicode(index + 1));
         message.react(ctx, emoji).await?;
     }
+
+    message
+        .channel_id
+        .create_public_thread(ctx, message.id, |thread| thread.name("Discussion"))
+        .await?;
 
     Ok(())
 }
